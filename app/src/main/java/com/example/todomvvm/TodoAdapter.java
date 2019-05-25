@@ -12,7 +12,10 @@ import android.widget.TextView;
 
 import com.example.todomvvm.database.Todo;
 
+import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
@@ -67,8 +70,19 @@ public class TodoAdapter extends RecyclerView.Adapter<TodoAdapter.TodoViewHolder
         Todo taskEntry = mTodoList.get(position);
         String description = taskEntry.getTitle();
         int priority = taskEntry.getPriority();
-        String todo_date_time = taskEntry.getDate() + "    -    " + taskEntry.getTime();
+        StringBuilder builder = new StringBuilder();
 
+        SimpleDateFormat sdf = new SimpleDateFormat("MM/dd/yyyy");
+        Date now = new Date();
+        String nowDate = now.getMonth() + "/" + now.getDay() + "/" + now.getYear();
+        if (taskEntry.getDate().equals(nowDate)) {
+            builder.append("Today | ");
+        } else if (taskEntry.getDate().compareTo(nowDate) > 0) {
+            builder.append("Upcoming | ");
+        }
+
+        builder.append(taskEntry.getDate() + "    -    " + taskEntry.getTime());
+        String todo_date_time = builder.toString();
         //Set values
         holder.taskDescriptionView.setText(description);
         holder.updatedAtView.setText(todo_date_time);
@@ -124,7 +138,7 @@ public class TodoAdapter extends RecyclerView.Adapter<TodoAdapter.TodoViewHolder
         notifyDataSetChanged();
     }
 
-    public List<Todo> getTodos(){
+    public List<Todo> getTodos() {
         return mTodoList;
     }
 

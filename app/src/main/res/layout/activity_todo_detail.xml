@@ -83,7 +83,9 @@
                     android:id="@+id/share_todo"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_weight="1"
+                    android:background="#D81B60"
+                    android:padding="15dp"
+                    android:textColor="#FFF"
                     android:text="Share Todo" />
 
 

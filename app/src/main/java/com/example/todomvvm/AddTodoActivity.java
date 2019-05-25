@@ -1,11 +1,14 @@
 package com.example.todomvvm;
 
+import android.app.AlarmManager;
 import android.app.DatePickerDialog;
+import android.app.PendingIntent;
 import android.app.TimePickerDialog;
 import android.arch.lifecycle.LiveData;
 import android.arch.lifecycle.Observer;
 import android.arch.lifecycle.ViewModelProvider;
 import android.arch.lifecycle.ViewModelProviders;
+import android.content.Context;
 import android.content.Intent;
 import android.support.annotation.Nullable;
 import android.support.v7.app.AppCompatActivity;
@@ -20,6 +23,8 @@ import android.widget.TimePicker;
 
 import com.example.todomvvm.database.AppDatabase;
 import com.example.todomvvm.database.Todo;
+import com.example.todomvvm.utility.Alarm.AlarmReceiver;
+import com.example.todomvvm.utility.NotificationHandler;
 
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
@@ -47,7 +52,7 @@ public class AddTodoActivity extends AppCompatActivity {
     EditText todo_title;
     RadioGroup mRadioGroup;
     Button mButton;
-
+    Calendar calendar = Calendar.getInstance();
     private int mTodoId = DEFAULT_TODO_ID;
 
     // Member variable for the Database
@@ -64,7 +69,6 @@ public class AddTodoActivity extends AppCompatActivity {
         if (savedInstanceState != null && savedInstanceState.containsKey(INSTANCE_TASK_ID)) {
             mTodoId = savedInstanceState.getInt(INSTANCE_TASK_ID, DEFAULT_TODO_ID);
         }
-
         Intent intent = getIntent();
         if (intent != null && intent.hasExtra(EXTRA_TASK_ID)) {
             mButton.setText(R.string.update_button);
@@ -83,8 +87,6 @@ public class AddTodoActivity extends AppCompatActivity {
                         populateUI(todoEntry);
                     }
                 });
-
-
             }
         }
     }
@@ -114,6 +116,10 @@ public class AddTodoActivity extends AppCompatActivity {
                 myCalendar.set(Calendar.MONTH, month);
                 myCalendar.set(Calendar.DAY_OF_MONTH, dayOfMonth);
 
+                calendar.set(Calendar.YEAR, year);
+                calendar.set(Calendar.MONTH, month);
+                calendar.set(Calendar.DAY_OF_MONTH, dayOfMonth);
+
                 String myFormat = "MM/dd/yy";
                 SimpleDateFormat sdf = new SimpleDateFormat(myFormat, Locale.US);
                 todo_date.setText(sdf.format(myCalendar.getTime()));
@@ -140,6 +146,8 @@ public class AddTodoActivity extends AppCompatActivity {
                 timePicker = new TimePickerDialog(AddTodoActivity.this, new TimePickerDialog.OnTimeSetListener() {
                     @Override
                     public void onTimeSet(TimePicker view, int hourOfDay, int minute) {
+                        calendar.set(Calendar.HOUR_OF_DAY, hourOfDay);
+                        calendar.set(Calendar.MINUTE, minute);
                         todo_time.setText(hourOfDay + ":" + minute);
                     }
                 }, hour, minute, false);
@@ -178,24 +186,28 @@ public class AddTodoActivity extends AppCompatActivity {
      * It retrieves user input and inserts that new task data into the underlying database.
      */
     public void onSaveButtonClicked() {
-        String description = mEditText.getText().toString();
+        final String description = mEditText.getText().toString();
         int priority = getPriorityFromViews();
         String tododate = todo_date.getText().toString();
         String todotime = todo_time.getText().toString();
-        String title = todo_title.getText().toString();
+        final String title = todo_title.getText().toString();
         Date date = new Date();
-
+        final Context context = this;
         // TODO (4) Make todo final so it is visible inside the run method
         final Todo todo = new Todo(title, description, priority, date, tododate, todotime);
         AppExecutors.getInstance().diskIO().execute(new Runnable() {
             @Override
             public void run() {
-                if (mTodoId == DEFAULT_TODO_ID)
+                if (mTodoId == DEFAULT_TODO_ID) {
                     mDb.todoDao().insertTodo(todo);
+                    NotificationHandler.sendNotification(context, "ADDED: New ToDo", title, 1, 0, null);
+                }
                 else {
                     todo.setId(mTodoId);
                     mDb.todoDao().update(todo);
+                    NotificationHandler.sendNotification(context, "UPDATED: "+title, description, 2, 0, null);
                 }
+                startAlarm();
             }
         });
         // TODO (2) Get the diskIO Executor from the instance of AppExecutors and
@@ -203,6 +215,14 @@ public class AddTodoActivity extends AppCompatActivity {
         // TODO (3) Move the remaining logic inside the run method
 
         finish();
+    }
+
+    public void startAlarm(){
+        AlarmManager alarmManager = (AlarmManager) getSystemService(ALARM_SERVICE);
+        Intent myIntent = new Intent(AddTodoActivity.this, AlarmReceiver.class);
+        PendingIntent pendingIntent = PendingIntent.getBroadcast(AddTodoActivity.this, 0, myIntent, 0);
+        alarmManager.set(AlarmManager.RTC, calendar.getTimeInMillis(), pendingIntent);
+
     }
 
     /**
