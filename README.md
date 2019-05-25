@@ -26,9 +26,8 @@
 #Android Component
  - Activity
  - Recycler View
- - Fragments
-
-
+ 
+ 
 #Installation
   
 
